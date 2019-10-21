@@ -1,5 +1,7 @@
 
 import numpy as np
+from scipy.stats import norm
+from scipy.optimize import curve_fit
 from scipy.interpolate import InterpolatedUnivariateSpline
 from matplotlib import pyplot as plt
 
@@ -72,35 +74,44 @@ class ProbabilityDensityFunction(InterpolatedUnivariateSpline):
         plt.figure('Sampling')
         rnd = pdf.rnd(1000000)
         ydata, edges, _ = plt.hist(rnd, bins=200)
+        xdata = 0.5 * (edges[1:] + edges[:-1])
+
+        def f(x, C, mu, sigma):
+            return C * norm.pdf(x, mu, sigma)
+    
+        popt, pcov = curve_fit(f, xdata, ydata)
+        print(popt)
+        print(np.sqrt(pcov.diagonal()))
+        _x = np.linspace(-10, 10, 500)
+        _y = f(_x, *popt)
+        plt.plot(_x, _y)
+            
+        mask = ydata > 0
+        chi2 = sum(((ydata[mask] - f(xdata[mask], *popt)) / np.sqrt(ydata[mask]))**2.)
+        nu = mask.sum() - 3
+        sigma = np.sqrt(2 * nu)
+        print(chi2, nu, sigma)
+    
         """ Inserire  un _ come nome della variabile restituite indica che non mi interessa nulla di quela variabile. edges sono i bordi dei bin (n+1). Mi serve il valor medio del bin per fittare l'istogramma
         """
         #Mi serve il valor medio. Traslo un vettore eliminando il primo elemento
         # e uno togliendo l'ultimo, sommandoli ottengo la somma di elementi
         #contigui, cosi' prendo il valor medio di ogni bin
-        xdata= 0.5 * (edges[1:] + edges [-1])
 
-        def f(x, C, mu, sigma):
-            return C* norm.pdf(x, mu, xigma)
-        
-        popt, pcov = curve_fit(, xdata, ydata)
-        _x = np.linspace(-10, 10, 500)
-        _y = f(_x, *popt)
-        plt.plot(_x, _y)
 
         # Ho alcuni bin vuoti, se non li levo il chi2 diverge
-        mask = ydata >0 
-        chi2 = sum((( ydata[mask]  -f(xdata[mask], *popt)) / np.sqrt(ydata[mask]))**2.)
+
         """ Radice quadrata di ydata come errore, verrebbe da pensare ad uma poissoniana ma non lo e' perche' io ho fissato il numero di bin e il numero di eventi, se io so quanti oggetti ci sono in n-1 bin so quanti sono gli elementi dell'n-esimo bit. Questa e' una multinomiale, non una poissoniana. Pero' con un cosi alto numero di bin piu' o meno viene una radice quadrata. Ho 200 bin, l'errore sara' radice quadrata di 2n percio' mi aspetto 200 +- 20.
         """
-        nu = mask.sum() - 3
-        sigma = np.sqrt(2*nu)
+
+
         """ Valori da conforntare, il valore del mio chi2 e' simile a questo significa che il mio generatore e' buono.
         """
     
 
 
 if __name__ == '__main__':
-    test_gauss()
-    pyplot.show
+    ProbabilityDensityFunction.test_gauss()
+    plt.show()
     
     
